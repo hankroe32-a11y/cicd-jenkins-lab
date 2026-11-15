@@ -15,12 +15,21 @@ pipeline {
                 string(credentialsId: 'WEBEX_TOKEN', variable: 'WEBEX_TOKEN'),
                 string(credentialsId: 'WEBEX_ROOM_ID', variable: 'WEBEX_ROOM_ID')
             ]) {
-                sh '''
-                    curl -s -X POST https://webexapis.com/v1/messages \
-                      -H "Authorization: Bearer $WEBEX_TOKEN" \
-                      -H "Content-Type: application/json" \
-                      -d "{\\"roomId\\": \\"$WEBEX_ROOM_ID\\", \\"markdown\\": \\"Jenkins Build **${currentBuild.currentResult}**: ${env.JOB_NAME} #${env.BUILD_NUMBER}\\"}"
-                '''
+                sh '''python3 -c '
+import os, json, urllib.request
+req = urllib.request.Request(
+    "https://webexapis.com/v1/messages",
+    data=json.dumps({
+        "roomId": os.environ["WEBEX_ROOM_ID"],
+        "markdown": f"Jenkins Build **{os.environ.get(\"BUILD_STATUS\", \"SUCCESS\")}**: {os.environ[\"JOB_NAME\"]} #{os.environ[\"BUILD_NUMBER\"]}"
+    }).encode("utf-8"),
+    headers={
+        "Authorization": f"Bearer {os.environ[\"WEBEX_TOKEN\"]}",
+        "Content-Type": "application/json"
+    }
+)
+urllib.request.urlopen(req)
+' '''
             }
         }
     }
